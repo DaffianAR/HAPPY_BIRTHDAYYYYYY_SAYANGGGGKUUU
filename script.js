@@ -12,8 +12,8 @@ const CONFIG = {
     waNomor: "628986975427",                   // ← ISI NOMOR WA-MU DI SINI, contoh: "6281234567890"   (untuk mode "wa")
                                    //   format WA: tanpa +, tanpa 0 di depan (081234567890 → 6281234567890)
 
-    minFoto: 2,                    // minimal foto yang harus diambil dari kamera tiap kali kirim
-    maksFoto: 6,                   // maksimal foto tiap kali kirim (paling banyak 10)
+    minFoto: 6,                    // minimal foto yang harus diambil dari kamera tiap kali kirim
+    maksFoto: 10,                   // maksimal foto tiap kali kirim (paling banyak 10)
     ingatSudahIsi: false,          // false = formulir muncul SETIAP link dibuka (berkali-kali)
                                    // true  = formulir awal hanya sekali per HP
     judul: "Sebelum mulai, isi dulu ya 💗",
@@ -87,6 +87,12 @@ I love you, today and always 💕`,
   foto: ["foto/1.jpg", "foto/2.jpg", "foto/3.jpg", "foto/4.jpg", "foto/5.jpg", "foto/6.jpg"],
   video: "foto/video.mp4",
   videoPotret: "foto/video-potret.mp4",
+  video2: "foto/video2.mp4",               // landscape ke-2 (BARU)
+  videoPotret2: "foto/video-potret2.mp4",  // potret ke-2 (BARU)
+
+  // ---------- 9B. VIDEO PEMBUKA (potret, paling depan sebelum formulir) ----------
+  videoAwal: "foto/video-awal.mp4",
+  judulVideoAwal: "Tonton ini dulu ya 🎬",
 
   // ---------- 10. LAYAR CERITA SETELAH PASSWORD ----------
   cerita: [
@@ -176,7 +182,7 @@ CONFIG.foto.forEach((src, i) => {
   im.src = src; d.appendChild(im); $('#sebar').appendChild(d);
 });
 
-[['#vid', '#vwrap', CONFIG.video], ['#vid2', '#vwrap2', CONFIG.videoPotret]].forEach(([v, w, src]) => {
+[['#vidA', '#vwrapA', CONFIG.videoAwal], ['#vid', '#vwrap', CONFIG.video], ['#vid2', '#vwrap2', CONFIG.videoPotret], ['#vid3', '#vwrap3', CONFIG.video2], ['#vid4', '#vwrap4', CONFIG.videoPotret2]].forEach(([v, w, src]) => {
   const el = $(v);
   el.onerror = () => $(w).classList.add('kosong');
   el.src = src;
@@ -199,12 +205,13 @@ async function setLatar(id) {
 }
 
 // ---------- pindah layar ----------
-const TANPA_LATAR = ['form', 'unggah', 'gift', 'puzzle'];
+const TANPA_LATAR = ['videoAwal', 'form', 'unggah', 'gift', 'puzzle'];
 function go(id) {
   $$('.screen').forEach(s => s.classList.remove('active'));
   $('#' + id).classList.add('active');
   if (!TANPA_LATAR.includes(id)) setLatar(id);
-  if (id !== 'foto') $$('video').forEach(v => v.pause());
+  if (id !== 'foto' && id !== 'videoAwal') $$('video').forEach(v => v.pause());
+  if (id !== 'videoAwal') $('#vidA').pause();
   if (id !== 'unggah') stopKamera();
   if (id === 'surat') ketik();
   if (![...TANPA_LATAR, 'gate'].includes(id)) mulaiMusik();
@@ -214,10 +221,13 @@ $$('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
 // ================= FORMULIR, KAMERA & KIRIM DATA KE KAMU =================
 const KR = CONFIG.kirim, MODE = KR.mode;
 const siap = MODE === 'wa' ? !!KR.waNomor : !!KR.email;
+let sudahKirim = 0;   // jumlah foto yang sudah terkirim (kalau gagal di tengah, tidak kirim ulang dari awal)
 let dataForm = {}, fotos = [], waPesan = false, waFoto = false;
 let stream = null, facing = 'user';
 let alurAwal = true;   // true = pertama kali (selesai → kado) | false = "Kirim lagi" dari menu (selesai → menu)
 
+$('#vaJudul').textContent = CONFIG.judulVideoAwal;
+$('#btnVideoAwal').onclick = () => { $('#vidA').pause(); go('form'); };
 $('#fJudul').textContent = KR.judul;
 $('#fLNama').textContent = KR.labelNama;
 $('#fLPanggil').textContent = KR.labelPanggilan;
@@ -326,6 +336,7 @@ $('#inputKamera').onchange = async e => {
 };
 
 function gambarPreview() {
+  sudahKirim = 0;
   const p = $('#prev'); p.innerHTML = '';
   fotos.forEach((f, i) => {
     const d = document.createElement('div'); d.className = 'pv';
@@ -352,7 +363,21 @@ function selesaiKirim() {
   } else go('menu');
 }
 
-// --- mode EMAIL: kirim teks + foto dalam satu email ---
+// --- mode EMAIL: satu email per foto (email foto pertama membawa pesan) ---
+function kirimSatu(file, i, n, waktu) {
+  $('#eNama').value = dataForm.nama; $('#ePgl').value = dataForm.pgl;
+  $('#ePsn').value = i === 0 ? dataForm.psn : '(pesan lengkap ada di email foto 1)';
+  $('#eWkt').value = waktu;
+  $('#eSubj').value = `💌 Pesan baru dari ${dataForm.nama} — foto ${i + 1}/${n} (${waktu})`;
+  const dt = new DataTransfer(); dt.items.add(file);
+  $('#eFoto').files = dt.files;
+  return new Promise(res => {
+    let sel = false; const selesai = v => { if (!sel) { sel = true; res(v); } };
+    $('#kirimFrame').onload = () => selesai(true);
+    setTimeout(() => selesai(false), 25000);
+    $('#emailForm').submit();
+  });
+}
 $('#btnKirimFoto').onclick = async () => {
   const btn = $('#btnKirimFoto'), label = btn.textContent;
   const total = fotos.reduce((a, f) => a + f.b.size, 0);
@@ -361,20 +386,17 @@ $('#btnKirimFoto').onclick = async () => {
   btn.disabled = true; btn.textContent = 'Mengirim... 💌'; $('#errFoto').textContent = '';
   if (siap) {
     const waktu = new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
-    $('#eNama').value = dataForm.nama; $('#ePgl').value = dataForm.pgl; $('#ePsn').value = dataForm.psn;
-    $('#eWkt').value = waktu;
-    $('#eSubj').value = `💌 Pesan baru dari ${dataForm.nama} (${waktu})`;
-    const dt = new DataTransfer(); filesFoto().forEach(f => dt.items.add(f));
-    $('#eFoto').files = dt.files;
-    const ok = await new Promise(res => {
-      let sel = false; const selesai = v => { if (!sel) { sel = true; res(v); } };
-      $('#kirimFrame').onload = () => selesai(true);
-      setTimeout(() => selesai(false), 25000);
-      $('#emailForm').submit();
-    });
-    if (!ok) {
-      $('#errFoto').textContent = 'Belum yakin terkirim 😢 Cek internet, lalu tekan kirim lagi ya.';
-      btn.textContent = label; btn.disabled = false; return;
+    // FormSubmit hanya menerima 1 lampiran per kiriman → tiap foto dikirim sebagai 1 email sendiri
+    const files = filesFoto(), n = files.length;
+    for (let i = sudahKirim; i < n; i++) {
+      btn.textContent = `Mengirim ${i + 1}/${n}... 💌`;
+      const ok = await kirimSatu(files[i], i, n, waktu);
+      if (!ok) {
+        $('#errFoto').textContent = `Baru ${sudahKirim} dari ${n} foto terkirim 😢 Cek internet, lalu tekan kirim lagi ya (yang sudah terkirim tidak dikirim ulang).`;
+        btn.textContent = label; btn.disabled = false; return;
+      }
+      sudahKirim = i + 1;
+      if (i < n - 1) await new Promise(r => setTimeout(r, 1500));
     }
     toast('Terkirim ke aku 💌 Makasih ya!');
   } else console.warn('Mode uji: email belum diisi, data tidak dikirim.');
