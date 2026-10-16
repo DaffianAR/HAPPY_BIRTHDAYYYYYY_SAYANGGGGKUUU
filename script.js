@@ -34,9 +34,19 @@ const CONFIG = {
   surat:
 `Selamat ulang tahun, sayang 🎂
 
-Terima kasih sudah hadir di hidupku. Kamu selalu sabar, hangat, dan bikin hari-hariku lebih berwarna.
 
-Semoga di umur yang baru kamu makin sehat, bahagia, dan semua mimpimu tercapai satu per satu.
+Selamat ulang tahun yaa. Semoga di umur kamu yang sekarang, semakin banyak hal baik yang datang ke kamu. Semoga apa yang kamu semogakan satu-satu bisa tercapai, urusan kamu dimudahkan, dan kamu selalu dikelilingi orang-orang yang sayang sama kamu.
+
+
+Aku juga mau bilang makasih karena selama ini kamu udah hadir di hidup aku. Makasih udah selalu berusaha ngerti aku, perhatian sama aku, dan nemenin aku di banyak hal. Mungkin aku nggak selalu bisa nunjukin semuanya dengan cara yang sempurna, tapi aku bener-bener bersyukur bisa kenal dan punya kamu.
+
+
+Di hari ulang tahun kamu ini, aku cuma berharap kamu bisa selalu bahagia, bukan cuma hari ini, tapi juga di hari-hari berikutnya. Kalau nanti ada hari yang berat, semoga kamu selalu punya alasan buat bertahan dan tetap tersenyum.
+
+
+Semoga kita juga bisa terus punya banyak cerita, banyak momen kecil yang nantinya bisa kita inget bareng-bareng. Aku seneng bisa jadi salah satu orang yang bisa nemenin kamu sampai sejauh ini.
+
+Sekali lagi, happy birthday yaa, sayang. Semoga tahun ini jadi tahun yang baik buat kamu. I love you ❤️
 
 I love you, today and always 💕`,
 
@@ -75,7 +85,7 @@ I love you, today and always 💕`,
 
   // ---------- 9. HALAMAN FOTO ----------
   foto: ["foto/1.jpg", "foto/2.jpg", "foto/3.jpg", "foto/4.jpg", "foto/5.jpg", "foto/6.jpg"],
-  video: ["foto/video.mp4","foto/video1.mp4"],
+  video: "foto/video.mp4",
   videoPotret: "foto/video-potret.mp4",
 
   // ---------- 10. LAYAR CERITA SETELAH PASSWORD ----------
