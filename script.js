@@ -12,8 +12,8 @@ const CONFIG = {
     waNomor: "628986975427",                   // ← ISI NOMOR WA-MU DI SINI, contoh: "6281234567890"   (untuk mode "wa")
                                    //   format WA: tanpa +, tanpa 0 di depan (081234567890 → 6281234567890)
 
-    minFoto: 6,                    // minimal foto yang harus diambil dari kamera tiap kali kirim
-    maksFoto: 12,                   // maksimal foto tiap kali kirim (paling banyak 12)
+    minFoto: 2,                    // minimal foto yang harus diambil dari kamera tiap kali kirim
+    maksFoto: 6,                   // maksimal foto tiap kali kirim (paling banyak 10)
     ingatSudahIsi: false,          // false = formulir muncul SETIAP link dibuka (berkali-kali)
                                    // true  = formulir awal hanya sekali per HP
     judul: "Sebelum mulai, isi dulu ya 💗",
@@ -37,9 +37,12 @@ const CONFIG = {
 
 Selamat ulang tahun yaa. Semoga di umur kamu yang sekarang, semakin banyak hal baik yang datang ke kamu. Semoga apa yang kamu semogakan satu-satu bisa tercapai, urusan kamu dimudahkan, dan kamu selalu dikelilingi orang-orang yang sayang sama kamu.
 
+
 Aku juga mau bilang makasih karena selama ini kamu udah hadir di hidup aku. Makasih udah selalu berusaha ngerti aku, perhatian sama aku, dan nemenin aku di banyak hal. Mungkin aku nggak selalu bisa nunjukin semuanya dengan cara yang sempurna, tapi aku bener-bener bersyukur bisa kenal dan punya kamu.
 
+
 Di hari ulang tahun kamu ini, aku cuma berharap kamu bisa selalu bahagia, bukan cuma hari ini, tapi juga di hari-hari berikutnya. Kalau nanti ada hari yang berat, semoga kamu selalu punya alasan buat bertahan dan tetap tersenyum.
+
 
 Semoga kita juga bisa terus punya banyak cerita, banyak momen kecil yang nantinya bisa kita inget bareng-bareng. Aku seneng bisa jadi salah satu orang yang bisa nemenin kamu sampai sejauh ini.
 
@@ -81,7 +84,7 @@ I love you, today and always 💕`,
   bungaTransisi: [],
 
   // ---------- 9. HALAMAN FOTO ----------
-  foto: ["foto/1.jpg", "foto/2.jpg","foto/3.jpg", "foto/4.jpg", "foto/5.jpg", "foto/6.jpg","foto/7.jpg", "foto/8.jpg", "foto/9.jpg", "foto/10.jpg", "foto/11.jpg", "foto/12.jpg","foto/13.jpg", "foto/14.jpg", "foto/15.jpg", "foto/16.jpg", "foto/17.jpg", "foto/18.jpg","foto/19.jpg", "foto/20.jpg", "foto/21.jpg"],
+  foto: Array.from({ length: 21 }, (_, i) => `foto/${i + 1}.jpg`),   // 21 foto: foto/1.jpg … foto/21.jpg (dipakai di halaman Foto & Universe)
   video: "foto/video.mp4",
   videoPotret: "foto/video-potret.mp4",
   video2: "foto/video2.mp4",               // landscape ke-2 (BARU)
@@ -615,50 +618,44 @@ const tunda = ms => new Promise(r => setTimeout(r, ms));
 async function pembukaan() {
   const st = $('#stage'), hati = $('#stHati'), pn = $('#stPanah');
   await tunda(1200);
-  const bu = $('#stBusur'), s = st.getBoundingClientRect(), a = bu.getBoundingClientRect(), h = hati.getBoundingClientRect();
-  const x0 = a.left - s.left + a.width * .75, y0 = a.top - s.top + a.height * .5;
-  const x1 = h.left - s.left + h.width / 2, y1 = h.top - s.top + h.height / 2, L = 70;
-  const r0 = Math.atan2(y1 - y0, x1 - x0);
-  const taruh = (px, py, r) => { pn.style.transform = `translate(${px}px,${py}px) rotate(${r}rad)`; bu.style.transform = `rotate(${r}rad)`; };
-  pn.style.opacity = 1; taruh(x0, y0, r0);
-  $('#stCap').textContent = 'tarik busurnya lalu lepas, atau ketuk saja 💗';
+  const bu = $('#stBusur'), tali = $('#tali'), sr = st.getBoundingClientRect(), a = bu.getBoundingClientRect(), h = hati.getBoundingClientRect();
+  const bx = a.left - sr.left + a.width / 2, by = a.top - sr.top + a.height / 2;          // pusat busur
+  const x1 = h.left - sr.left + h.width / 2, y1 = h.top - sr.top + h.height / 2, L = 70;  // pusat hati
+  const r = Math.atan2(y1 - by, x1 - bx), ux = Math.cos(r), uy = Math.sin(r);             // arah tembak: busur selalu menghadap hati
+  const tx = (20 / 60 - .5) * a.width, ty = .425 * a.height;                              // posisi tali busur terhadap pusatnya
+  const rot = (dx, dy) => [bx + dx * ux - dy * uy, by + dx * uy + dy * ux];
+  const N = rot(tx, 0), P1 = rot(tx, -ty), P2 = rot(tx, ty);
+  const taruh = p => {   // p = seberapa jauh busur ditarik ke belakang (px)
+    const nx = N[0] - ux * p, ny = N[1] - uy * p;
+    pn.style.transform = `translate(${nx}px,${ny}px) rotate(${r}rad)`;
+    tali.setAttribute('points', `${P1} ${nx},${ny} ${P2}`);
+  };
+  bu.style.transform = `rotate(${r}rad)`; pn.style.opacity = 1; taruh(0);
+  $('#stCap').textContent = 'tarik busurnya ke belakang (jauhi hati), lalu lepas 💗';
   st.style.touchAction = 'none';
-  let miss = 0, tarik = null, bebas = true;
-  const cegah = e => e.preventDefault(); st.addEventListener('touchmove', cegah, { passive: false });
   await new Promise(done => {
-    // (vx,vy) = arah tarikan; panah melesat ke arah berlawanan, seperti menarik busur
-    const luncur = (vx, vy) => {
-      bebas = false;
-      const n = Math.hypot(vx, vy), ux = -vx / n, uy = -vy / n, px = x0 + vx, py = y0 + vy;
-      const dx = x1 - px, dy = y1 - py;
-      const cek = (sx, sy) => dx * sx + dy * sy > 0 && Math.abs(dx * sy - dy * sx) < 55 + miss * 35;   // makin sering meleset, makin mudah kena
-      const kena = cek(ux, uy) || cek(-ux, -uy);   // ditarik menjauh ATAU digeser ke arah hati, dua-duanya kena
-      pn.style.transition = 'transform .6s cubic-bezier(.4,0,.9,1),opacity .6s';
-      if (kena) { const r = Math.atan2(dy, dx); taruh(x1 - L * Math.cos(r), y1 - L * Math.sin(r), r); setTimeout(done, 650); }
-      else {
-        taruh(px + ux * 1000, py + uy * 1000, Math.atan2(uy, ux)); pn.style.opacity = 0; miss++;
-        $('#stCap').textContent = miss > 1 ? 'hampir! arahkan ke hatinya 💗' : 'meleset, coba lagi 💗';
-        setTimeout(() => { pn.style.transition = 'none'; taruh(x0, y0, r0); void pn.offsetWidth; pn.style.opacity = 1; bebas = true; }, 800);
-      }
+    let mulai = null, pull = 0, tembak = false;
+    const lepas = () => {
+      if (tembak) return; tembak = true;
+      const dur = .9 - Math.min(pull, 90) / 90 * .4;   // makin kuat ditarik, makin cepat melesat
+      pn.style.transition = `transform ${dur.toFixed(2)}s cubic-bezier(.4,0,.9,1)`;
+      tali.setAttribute('points', `${P1} ${N} ${P2}`);   // tali kembali lurus
+      pn.style.transform = `translate(${x1 - L * ux}px,${y1 - L * uy}px) rotate(${r}rad)`;
+      setTimeout(done, dur * 1000);
     };
-    st.onpointerdown = e => { if (!bebas) return; tarik = { v: null, x: e.clientX, y: e.clientY }; st.setPointerCapture(e.pointerId); pn.style.transition = 'none'; };
+    st.onpointerdown = e => { if (tembak) return; mulai = [e.clientX, e.clientY]; pn.style.transition = 'none'; st.setPointerCapture(e.pointerId); };
     st.onpointermove = e => {
-      if (!tarik) return;
-      let vx = e.clientX - tarik.x, vy = e.clientY - tarik.y; const n = Math.hypot(vx, vy);
-      if (n > 90) { vx *= 90 / n; vy *= 90 / n; }
-      if (n > 4) { tarik.v = [vx, vy]; taruh(x0 + vx, y0 + vy, Math.atan2(-vy, -vx)); }
+      if (!mulai || tembak) return;
+      pull = Math.max(0, Math.min(90, -((e.clientX - mulai[0]) * ux + (e.clientY - mulai[1]) * uy) * 1.2));
+      taruh(pull);
     };
     st.onpointerup = st.onpointercancel = () => {
-      if (!tarik) return; const v = tarik.v; tarik = null;
-      if (v && Math.hypot(v[0], v[1]) > 25) luncur(v[0], v[1]);
-      else { const n = Math.hypot(x1 - x0, y1 - y0); luncur(-(x1 - x0) / n * 50, -(y1 - y0) / n * 50); }   // cukup diketuk = panah lurus ke hati
+      if (!mulai || tembak) return; mulai = null;
+      if (pull >= 25) lepas(); else { pull = 0; pn.style.transition = 'transform .2s'; taruh(0); }   // kurang kuat: busur kembali
     };
-    setTimeout(() => {   // kalau 30 detik diam saja, panah dilepas otomatis
-      if (!bebas || tarik) return; const n = Math.hypot(x1 - x0, y1 - y0); luncur(-(x1 - x0) / n * 50, -(y1 - y0) / n * 50);
-    }, 12000);
+    setTimeout(() => { if (!tembak && !mulai) { pull = 60; lepas(); } }, 30000);   // kalau 30 detik diam, dilepas otomatis
   });
-  st.onpointerdown = st.onpointermove = st.onpointerup = st.onpointercancel = null;
-  st.removeEventListener('touchmove', cegah); st.style.touchAction = ''; bu.style.transform = '';
+  st.onpointerdown = st.onpointermove = st.onpointerup = st.onpointercancel = null; st.style.touchAction = '';
   // hati meledak
   hati.style.visibility = 'hidden';
   for (let i = 0; i < 28; i++) {
@@ -669,7 +666,7 @@ async function pembukaan() {
   }
   await tunda(500);
   $('#hbFlash').classList.add('on'); await tunda(2600); $('#hbFlash').classList.remove('on');
-  [pn, $('#stBusur'), $('#stCap')].forEach(e => e.style.display = 'none'); hati.style.display = 'none';
+  [pn, $('#stBusur'), $('#stTali'), $('#stCap')].forEach(e => e.style.display = 'none'); hati.style.display = 'none';
   // pohon tumbuh
   const T = [['M150 395C148 330 152 270 150 215', 7], ['M150 250C120 220 95 190 70 150', 4], ['M150 250C180 220 205 190 230 150', 4], ['M150 225C140 190 120 150 110 100', 3.5],
     ['M150 225C160 190 180 150 190 100', 3.5], ['M150 215C150 170 150 120 150 70', 3.5], ['M110 190C90 170 70 150 55 120', 3], ['M190 190C210 170 230 150 245 120', 3]];
@@ -695,29 +692,42 @@ const UN = { tilt: .42, jalan: false, raf: 0, last: 0, t: 0, putar: 0, pts: null
 // warna partikel: dari inti (putih-pink) ke tepi (magenta gelap); tiap warna punya 4 tingkat terang
 const UN_WARNA = [[255, 236, 246], [255, 175, 218], [255, 100, 190], [225, 55, 165], [165, 30, 130]]
   .map(c => [.35, .6, .8, 1].map(a => `rgba(${c[0]},${c[1]},${c[2]},${a})`));
-function hentiUni() { cancelAnimationFrame(UN.raf); UN.jalan = false; }
+function kunciLandscape(on) {   // di HP: coba layar penuh + putar ke landscape (hanya jalan di sebagian browser, sisanya diabaikan)
+  try {
+    if (on) { const el = document.documentElement; if (el.requestFullscreen) el.requestFullscreen().then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape')).catch(() => {}); }
+    else { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); }
+  } catch (e) {}
+}
+function hentiUni() { cancelAnimationFrame(UN.raf); if (UN.jalan) kunciLandscape(false); UN.jalan = false; }
 function bangunUni() {
-  const n = UN.w < 600 ? 4500 : 9000, LENGAN = 3;
+  const n = UN.w < 700 ? 4500 : 9000, LENGAN = 3;
   UN.pts = Array.from({ length: n }, () => {
     const rn = .05 + Math.pow(Math.random(), 1.5) * .95;                       // lebih padat di tengah
     const sebar = (.1 + rn * .3) * (Math.random() + Math.random() - 1);        // makin ke tepi makin menyebar
     return { rn, a: ((Math.random() * LENGAN) | 0) * 6.283 / LENGAN + rn * 6.5 + sebar, s: .9 + Math.random() * 1.5,
-      b: Math.min(4, rn * 5 | 0), q: .3 + Math.random() * .7, sp: .0042 / (.25 + rn) };   // bagian dalam berputar lebih cepat
+      b: Math.min(4, rn * 5 | 0), q: .3 + Math.random() * .7, sp: .0042 / (.25 + rn) };
   });
-  // kata & foto disebar merata (sudut emas) supaya tidak menumpuk
+  // foto & kata: pola 3 foto, 1 kata, lalu dibagi ke 3 lingkaran orbit (tiap lingkaran disebar rata, jadi tidak menumpuk)
   const kata = CONFIG.kataUniverse || [], foto = CONFIG.foto || [], semua = [];
-  for (let i = 0; i < Math.max(kata.length, foto.length); i++) {
-    if (foto[i]) { const im = new Image(); im.src = foto[i]; semua.push({ im, src: foto[i] }); }
-    if (kata[i]) semua.push({ k: kata[i] });
+  let fi = 0, ki = 0;
+  while (fi < foto.length || ki < kata.length) {
+    for (let k = 0; k < 3 && fi < foto.length; k++) { const im = new Image(); im.src = foto[fi]; semua.push({ im, src: foto[fi++] }); }
+    if (ki < kata.length) semua.push({ k: kata[ki++] });
   }
-  UN.item = semua.map((o, j) => Object.assign(o, { a: j * 2.399, rn: .3 + ((j * .618) % 1) * .5, sp: .0013 }));
+  const ring = [{ rn: .38, f: .28, sp: .0016 }, { rn: .62, f: .34, sp: -.0012 }, { rn: .88, f: 1, sp: .0009 }];
+  let idx = 0;
+  ring.forEach((rg, ri) => {
+    const n2 = ri < 2 ? Math.min(Math.round(semua.length * rg.f), semua.length - idx) : semua.length - idx;
+    for (let q = 0; q < n2; q++) Object.assign(semua[idx++], { a: q * 6.283 / n2 + ri * .9, rn: rg.rn, sp: rg.sp });
+  });
+  UN.item = semua;
 }
 function ukurUni() {
   const c = $('#uCanvas'), d = Math.min(devicePixelRatio || 1, 2);
   UN.w = innerWidth; UN.h = innerHeight; c.width = UN.w * d; c.height = UN.h * d;
   c.getContext('2d').setTransform(d, 0, 0, d, 0, 0);
-  UN.tilt = UN.w < UN.h ? .72 : .42;   // layar HP (tegak) → galaksi lebih "berdiri" supaya mengisi layar
-  UN.cx = UN.w / 2; UN.cy = UN.h / 2; UN.R = Math.min(UN.w * .5, UN.h * .62);
+  UN.tilt = UN.w < UN.h ? .85 : (UN.h < 500 ? .6 : .5);   // HP tegak → galaksi lebih "berdiri"; landscape → lebih pipih
+  UN.cx = UN.w / 2; UN.cy = UN.h / 2; UN.R = Math.min(UN.w * .46 / .95, (UN.h * .5 - 40) / (.9 * UN.tilt + .05));   // sebesar mungkin tapi tetap muat di layar
   if (!UN.pts) bangunUni();
 }
 function frameUni(now) {
@@ -737,32 +747,43 @@ function frameUni(now) {
     g.fillStyle = UN_WARNA[p.b][Math.min(3, (dp * .6 + p.q * .4) * 4 | 0)];
     g.fillRect(cx + Math.cos(a) * r, cy + sn * r * UN.tilt, z, z);
   }
-  // lubang hitam + cincin terang di pusat
-  g.globalCompositeOperation = 'source-over'; g.globalAlpha = fade;
-  g.save(); g.translate(cx, cy); g.scale(1, UN.tilt);
-  const cg = g.createRadialGradient(0, 0, 0, 0, 0, R * .17);
-  cg.addColorStop(0, 'rgba(12,0,7,1)'); cg.addColorStop(.52, 'rgba(12,0,7,1)'); cg.addColorStop(.72, 'rgba(255,205,232,.95)'); cg.addColorStop(1, 'rgba(255,70,170,0)');
-  g.fillStyle = cg; g.beginPath(); g.arc(0, 0, R * .17, 0, 6.283); g.fill(); g.restore();
-  // kata & foto yang mengorbit
+  g.globalCompositeOperation = 'source-over';
+  // posisi kata & foto
   const L = UN.item.map(o => {
     const a = o.a + UN.t * o.sp + UN.putar, r = o.rn * R, sn = Math.sin(a);
     return { o, x: cx + Math.cos(a) * r, y: cy + sn * r * UN.tilt - 8 + Math.sin(UN.t * .03 + o.a * 3) * 5, dp: (sn + 1) / 2 };
   }).sort((p, q) => p.dp - q.dp);
-  const B = Math.max(38, Math.min(74, R * .15)); UN.hit = [];
+  const B = Math.max(30, Math.min(60, R * .11)); UN.hit = [];
   g.textAlign = 'center'; g.textBaseline = 'middle';
-  for (const { o, x, y, dp } of L) {
+  const gambarItem = ({ o, x, y, dp }) => {
     const sc = .7 + dp * .45; g.globalAlpha = fade * (.55 + dp * .45);
     if (o.k) {
-      g.font = `bold ${Math.max(10, R * .04) * sc}px 'Playfair Display',serif`; g.shadowColor = '#ff4fa0'; g.shadowBlur = 12;
+      g.font = `bold ${Math.max(10, R * .038) * sc}px 'Playfair Display',serif`; g.shadowColor = '#ff4fa0'; g.shadowBlur = 12;
       g.fillStyle = '#ffe3f0'; g.fillText(o.k, x, y); g.shadowBlur = 0;
     } else if (o.im.complete && o.im.naturalWidth) {
       const S = B * sc, m = Math.min(o.im.naturalWidth, o.im.naturalHeight);
-      g.save(); g.shadowColor = '#ff4fa0'; g.shadowBlur = 16; g.fillStyle = '#fff'; g.beginPath();
-      (g.roundRect || g.rect).call(g, x - S / 2 - 3, y - S / 2 - 3, S + 6, S + 6, 9); g.fill(); g.shadowBlur = 0; g.clip();
+      g.save(); g.shadowColor = '#ff4fa0'; g.shadowBlur = 14; g.fillStyle = '#fff'; g.beginPath();
+      (g.roundRect || g.rect).call(g, x - S / 2 - 3, y - S / 2 - 3, S + 6, S + 6, 8); g.fill(); g.shadowBlur = 0; g.clip();
       g.drawImage(o.im, (o.im.naturalWidth - m) / 2, (o.im.naturalHeight - m) / 2, m, m, x - S / 2, y - S / 2, S, S); g.restore();
       UN.hit.push({ x, y, S, src: o.src });
     }
+  };
+  L.filter(i => i.dp < .5).forEach(gambarItem);   // bagian belakang orbit: di belakang hati
+  // HATI BESAR di tengah (berdenyut)
+  g.globalAlpha = fade;
+  const hl = g.createRadialGradient(cx, cy, 0, cx, cy, R * .42); hl.addColorStop(0, 'rgba(255,90,170,.55)'); hl.addColorStop(1, 'rgba(255,60,150,0)');
+  g.fillStyle = hl; g.fillRect(cx - R * .42, cy - R * .42, R * .84, R * .84);
+  const k = R * .0125 * (1 + .07 * Math.pow(Math.max(0, Math.sin(UN.t * .07)), 6));
+  g.save(); g.translate(cx, cy - R * .01); g.scale(k, k); g.beginPath();
+  for (let i = 0; i <= 60; i++) {
+    const t = i / 60 * 6.283, x = 16 * Math.sin(t) ** 3, y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+    i ? g.lineTo(x, y) : g.moveTo(x, y);
   }
+  g.closePath();
+  const hg = g.createRadialGradient(-6, -8, 2, 0, 0, 22); hg.addColorStop(0, '#ffc4dc'); hg.addColorStop(.5, '#ff4f9a'); hg.addColorStop(1, '#b0124f');
+  g.shadowColor = '#ff4fa0'; g.shadowBlur = 45; g.fillStyle = hg; g.fill(); g.shadowBlur = 0;
+  g.fillStyle = 'rgba(255,255,255,.4)'; g.beginPath(); g.ellipse(-8, -8, 4.2, 2.4, -.6, 0, 6.283); g.fill(); g.restore();
+  L.filter(i => i.dp >= .5).forEach(gambarItem);  // bagian depan orbit: di depan hati
   g.globalAlpha = 1;
   UN.raf = requestAnimationFrame(frameUni);
 }
@@ -770,7 +791,11 @@ function mulaiUni() {
   if (UN.jalan) return; UN.jalan = true; UN.t = 0; UN.last = performance.now();
   ukurUni(); UN.raf = requestAnimationFrame(frameUni);
 }
-$('#btnUni').onclick = () => { $('#uGate').hidden = true; mulaiUni(); };
+$('#btnUni').onclick = () => {
+  $('#uGate').hidden = true;
+  if (innerWidth < 900 && matchMedia('(pointer:coarse)').matches) kunciLandscape(true);
+  mulaiUni();
+};
 addEventListener('resize', () => { if (UN.jalan) ukurUni(); });
 // geser untuk memutar galaksi, ketuk foto untuk memperbesar
 let seretUni = null;
