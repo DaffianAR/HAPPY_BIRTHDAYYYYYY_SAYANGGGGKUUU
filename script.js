@@ -205,7 +205,7 @@ async function setLatar(id) {
 }
 
 // ---------- pindah layar ----------
-const TANPA_LATAR = ['videoAwal', 'form', 'unggah', 'gift', 'puzzle'];
+const TANPA_LATAR = ['universe', 'videoAwal', 'form', 'unggah', 'gift', 'puzzle'];
 function go(id) {
   $$('.screen').forEach(s => s.classList.remove('active'));
   $('#' + id).classList.add('active');
@@ -214,6 +214,7 @@ function go(id) {
   if (id !== 'videoAwal') $('#vidA').pause();
   if (id !== 'unggah') stopKamera();
   if (id === 'surat') ketik();
+  if (id === 'universe') $('#uGate').hidden = false; else hentiUni();
   if (![...TANPA_LATAR, 'gate'].includes(id)) mulaiMusik();
 }
 $$('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
@@ -227,7 +228,7 @@ let stream = null, facing = 'user';
 let alurAwal = true;   // true = pertama kali (selesai → kado) | false = "Kirim lagi" dari menu (selesai → menu)
 
 $('#vaJudul').textContent = CONFIG.judulVideoAwal;
-$('#btnVideoAwal').onclick = () => { $('#vidA').pause(); go('form'); };
+$('#btnVideoAwal').onclick = () => { $('#vidA').pause(); go('gift'); };
 $('#fJudul').textContent = KR.judul;
 $('#fLNama').textContent = KR.labelNama;
 $('#fLPanggil').textContent = KR.labelPanggilan;
@@ -249,6 +250,7 @@ function resetKirim() {
 }
 function mulaiForm(awal) {
   alurAwal = awal; resetKirim();
+  $('#stage').hidden = !awal; if (!awal) $('#form').classList.remove('kunci');
   $$('.batal').forEach(b => b.hidden = awal);
   $('#btnKirimFoto').textContent = awal ? 'Kirim & lanjut ➜' : 'Kirim ✉️';
   $('#btnWaLanjut').textContent = awal ? 'Lanjut ➜' : 'Selesai ✓';
@@ -359,7 +361,7 @@ function selesaiKirim() {
   stopKamera();
   if (alurAwal) {
     try { localStorage.setItem('sudahIsi', '1'); } catch (e) {}
-    go('gift');
+    go('videoAwal');   // setelah kirim foto → video, lalu kado
   } else go('menu');
 }
 
@@ -428,7 +430,7 @@ $('#btnWaLanjut').onclick = selesaiKirim;
 // opsional: lewati formulir awal kalau dia sudah pernah mengisi (hanya bila ingatSudahIsi = true)
 let sudah = false;
 try { sudah = KR.ingatSudahIsi && localStorage.getItem('sudahIsi') && !location.search.includes('ulang'); } catch (e) {}
-if (sudah) go('gift');
+
 // ===============================================================
 
 // ---------- transisi bunga ----------
@@ -607,3 +609,133 @@ ukuran(); addEventListener('resize', ukuran);
   }
   requestAnimationFrame(gambar);
 })();
+
+// ---------- PEMBUKAAN: panah → hati meledak → Happy Birthday → pohon hati ----------
+const tunda = ms => new Promise(r => setTimeout(r, ms));
+async function pembukaan() {
+  const st = $('#stage'), hati = $('#stHati'), pn = $('#stPanah');
+  await tunda(1200);
+  const bu = $('#stBusur'), s = st.getBoundingClientRect(), a = bu.getBoundingClientRect(), h = hati.getBoundingClientRect();
+  const x0 = a.left - s.left + a.width * .75, y0 = a.top - s.top + a.height * .5;
+  const x1 = h.left - s.left + h.width / 2, y1 = h.top - s.top + h.height / 2, L = 70;
+  const r0 = Math.atan2(y1 - y0, x1 - x0);
+  const taruh = (px, py, r) => { pn.style.transform = `translate(${px}px,${py}px) rotate(${r}rad)`; bu.style.transform = `rotate(${r}rad)`; };
+  pn.style.opacity = 1; taruh(x0, y0, r0);
+  $('#stCap').textContent = 'tarik busurnya, lalu lepas 💗';
+  st.style.touchAction = 'none';
+  let miss = 0, tarik = null, bebas = true;
+  await new Promise(done => {
+    // (vx,vy) = arah tarikan; panah melesat ke arah berlawanan, seperti menarik busur
+    const luncur = (vx, vy) => {
+      bebas = false;
+      const n = Math.hypot(vx, vy), ux = -vx / n, uy = -vy / n, px = x0 + vx, py = y0 + vy;
+      const dx = x1 - px, dy = y1 - py, t = dx * ux + dy * uy, perp = Math.abs(dx * uy - dy * ux);
+      const kena = t > 0 && perp < 45 + miss * 30;   // makin sering meleset, makin mudah kena
+      pn.style.transition = 'transform .6s cubic-bezier(.4,0,.9,1),opacity .6s';
+      if (kena) { const r = Math.atan2(dy, dx); taruh(x1 - L * Math.cos(r), y1 - L * Math.sin(r), r); setTimeout(done, 650); }
+      else {
+        taruh(px + ux * 1000, py + uy * 1000, Math.atan2(uy, ux)); pn.style.opacity = 0; miss++;
+        $('#stCap').textContent = miss > 1 ? 'hampir! arahkan ke hatinya 💗' : 'meleset, coba lagi 💗';
+        setTimeout(() => { pn.style.transition = 'none'; taruh(x0, y0, r0); void pn.offsetWidth; pn.style.opacity = 1; bebas = true; }, 800);
+      }
+    };
+    st.onpointerdown = e => { if (!bebas) return; tarik = { v: null, x: e.clientX, y: e.clientY }; st.setPointerCapture(e.pointerId); pn.style.transition = 'none'; };
+    st.onpointermove = e => {
+      if (!tarik) return;
+      let vx = e.clientX - tarik.x, vy = e.clientY - tarik.y; const n = Math.hypot(vx, vy);
+      if (n > 90) { vx *= 90 / n; vy *= 90 / n; }
+      if (n > 4) { tarik.v = [vx, vy]; taruh(x0 + vx, y0 + vy, Math.atan2(-vy, -vx)); }
+    };
+    st.onpointerup = st.onpointercancel = () => {
+      if (!tarik) return; const v = tarik.v; tarik = null;
+      if (v && Math.hypot(v[0], v[1]) > 25) luncur(v[0], v[1]); else taruh(x0, y0, r0);
+    };
+    setTimeout(() => {   // kalau 30 detik diam saja, panah dilepas otomatis
+      if (!bebas || tarik) return; const n = Math.hypot(x1 - x0, y1 - y0); luncur(-(x1 - x0) / n * 50, -(y1 - y0) / n * 50);
+    }, 30000);
+  });
+  st.onpointerdown = st.onpointermove = st.onpointerup = st.onpointercancel = null;
+  st.style.touchAction = ''; bu.style.transform = '';
+  // hati meledak
+  hati.style.visibility = 'hidden';
+  for (let i = 0; i < 28; i++) {
+    const e = document.createElement('i'), t = Math.random() * 6.28, d = 70 + Math.random() * 110;
+    e.className = 'ledak'; e.textContent = ['💗', '💖', '🩷', '✨'][i % 4];
+    e.style.cssText = `left:${x1}px;top:${y1}px;--dx:${Math.cos(t) * d}px;--dy:${Math.sin(t) * d}px`;
+    st.appendChild(e); setTimeout(() => e.remove(), 1300);
+  }
+  await tunda(500);
+  $('#hbFlash').classList.add('on'); await tunda(2600); $('#hbFlash').classList.remove('on');
+  [pn, $('#stBusur'), $('#stCap')].forEach(e => e.style.display = 'none'); hati.style.display = 'none';
+  // pohon tumbuh
+  const T = [['M150 395C148 330 152 270 150 215', 7], ['M150 250C120 220 95 190 70 150', 4], ['M150 250C180 220 205 190 230 150', 4], ['M150 225C140 190 120 150 110 100', 3.5],
+    ['M150 225C160 190 180 150 190 100', 3.5], ['M150 215C150 170 150 120 150 70', 3.5], ['M110 190C90 170 70 150 55 120', 3], ['M190 190C210 170 230 150 245 120', 3]];
+  $('#batang').innerHTML = T.map(([d, w], i) => `<path pathLength="1" d="${d}" stroke-width="${w}" style="--dl:${(i * .18).toFixed(2)}s"/>`).join('');
+  const P = $('#stPohon'); P.hidden = false; void P.offsetWidth; P.classList.add('on', 'tumbuh');
+  await tunda(2200);
+  // daun hati mekar membentuk hati
+  const K = $('#kanopi'), W = K.clientWidth, em = ['💗', '💖', '🩷', '🧡', '💛', '💗'];
+  for (let i = 0; i < 140; i++) {
+    const t = Math.random() * 6.28, q = Math.sqrt(Math.random()) * .96;
+    const x = 16 * Math.sin(t) ** 3, y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+    const e = document.createElement('i'); e.className = 'kn'; e.textContent = em[i % em.length];
+    e.style.cssText = `left:${50 + x * q * 2.9}%;top:${48 - y * q * 2.6}%;font-size:${W * (.065 + Math.random() * .04)}px;animation-delay:${(i * .018).toFixed(2)}s`;
+    K.appendChild(e);
+  }
+  await tunda(3000);
+  $('#stHB').hidden = false; $('#stTurun').hidden = false;
+  $('#form').classList.remove('kunci');   // sekarang formulir di bawah bisa di-scroll
+}
+
+// ---------- UNIVERSE HATI (layar paling akhir) ----------
+const UN = { jalan: false, raf: 0, t: 0, pts: null, item: [], hit: [] };
+function hentiUni() { cancelAnimationFrame(UN.raf); UN.jalan = false; }
+$('#btnUni').onclick = () => { $('#uGate').hidden = true; mulaiUni(); };
+function mulaiUni() {
+  if (UN.jalan) return; UN.jalan = true;
+  const c = $('#uCanvas'), g = c.getContext('2d'), d = Math.min(devicePixelRatio || 1, 2);
+  const w = innerWidth, h = innerHeight, cx = w / 2, cy = h / 2, R = Math.min(w * .5, h * .6), TILT = .5;
+  c.width = w * d; c.height = h * d; g.setTransform(d, 0, 0, d, 0, 0);
+  if (!UN.pts) {
+    UN.pts = Array.from({ length: 1100 }, (_, i) => {
+      const u = Math.random(), r = Math.pow(u, .8) * R;
+      return { r, a: (i % 3) * 2.094 + r / R * 4.2 + (Math.random() - .5) * .6, s: .8 + Math.random() * 1.6, al: .3 + Math.random() * .7, sp: .006 / (.3 + r / R) };
+    });
+    const kata = ['HAPPY BIRTHDAY', 'I LOVE YOU', 'MY LOVE', 'FOREVER', CONFIG.nama.split(' ')[0], 'SAYANG', 'HAPPY BIRTHDAY', 'ALWAYS YOU', 'MY EVERYTHING', 'KAMU SPESIAL'];
+    kata.forEach((k, i) => UN.item.push({ k, r: R * (.45 + (i % 4) * .15), a: i * .63, sp: .0035 + (i % 3) * .001 }));
+    CONFIG.foto.forEach((src, i) => { const im = new Image(); im.src = src; UN.item.push({ im, src, r: R * (.35 + (i % 4) * .17), a: i * 1.05 + .3, sp: .003 + (i % 3) * .001 }); });
+  }
+  (function frame() {
+    if (!UN.jalan) return;
+    UN.t++; UN.hit = [];
+    g.fillStyle = '#14040c'; g.fillRect(0, 0, w, h);
+    const gl = g.createRadialGradient(cx, cy, 0, cx, cy, R * .5); gl.addColorStop(0, 'rgba(255,120,190,.55)'); gl.addColorStop(1, 'rgba(255,60,150,0)');
+    g.fillStyle = gl; g.fillRect(0, 0, w, h);
+    for (const p of UN.pts) {
+      const a = p.a + UN.t * p.sp, dp = (Math.sin(a) + 1) / 2, z = p.s * (.6 + dp * .8);
+      g.fillStyle = `rgba(255,${120 + dp * 80 | 0},${190 + dp * 40 | 0},${p.al * (.45 + .55 * dp)})`;
+      g.fillRect(cx + Math.cos(a) * p.r, cy + Math.sin(a) * p.r * TILT, z, z);
+    }
+    const L = UN.item.map(o => { const a = o.a + UN.t * o.sp; return { o, x: cx + Math.cos(a) * o.r, y: cy + Math.sin(a) * o.r * TILT + Math.sin(UN.t * .02 + o.r) * 6, dp: (Math.sin(a) + 1) / 2 }; }).sort((p, q) => p.dp - q.dp);
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (const { o, x, y, dp } of L) {
+      const sc = .7 + dp * .6;
+      if (o.k) { g.font = `bold ${13 * sc}px 'Playfair Display',serif`; g.shadowColor = '#ff4fa0'; g.shadowBlur = 10; g.fillStyle = `rgba(255,225,238,${.55 + dp * .45})`; g.fillText(o.k, x, y); g.shadowBlur = 0; }
+      else if (o.im.complete && o.im.naturalWidth) {
+        const S = 50 * sc; g.save(); g.globalAlpha = .6 + dp * .4; g.fillStyle = '#fff'; g.beginPath(); (g.roundRect || g.rect).call(g, x - S / 2 - 3, y - S / 2 - 3, S + 6, S + 6, 8); g.fill(); g.clip();
+        const m = Math.min(o.im.naturalWidth, o.im.naturalHeight); g.drawImage(o.im, (o.im.naturalWidth - m) / 2, (o.im.naturalHeight - m) / 2, m, m, x - S / 2, y - S / 2, S, S); g.restore();
+        UN.hit.push({ x, y, S, src: o.src });
+      }
+    }
+    UN.raf = requestAnimationFrame(frame);
+  })();
+}
+$('#uCanvas').onpointerdown = e => {
+  for (let i = UN.hit.length - 1; i >= 0; i--) {
+    const q = UN.hit[i];
+    if (Math.abs(e.clientX - q.x) < q.S / 2 + 4 && Math.abs(e.clientY - q.y) < q.S / 2 + 4) { $('#lb img').src = q.src; $('#lb').classList.add('on'); return; }
+  }
+};
+
+// ---------- mulai ----------
+if (sudah) go('gift'); else pembukaan();
