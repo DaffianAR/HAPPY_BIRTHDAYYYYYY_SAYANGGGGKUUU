@@ -13,7 +13,7 @@ const CONFIG = {
                                    //   format WA: tanpa +, tanpa 0 di depan (081234567890 → 6281234567890)
 
     minFoto: 6,                    // minimal foto yang harus diambil dari kamera tiap kali kirim
-    maksFoto: 10,                   // maksimal foto tiap kali kirim (paling banyak 10)
+    maksFoto: 12,                   // maksimal foto tiap kali kirim (paling banyak 12)
     ingatSudahIsi: false,          // false = formulir muncul SETIAP link dibuka (berkali-kali)
                                    // true  = formulir awal hanya sekali per HP
     judul: "Sebelum mulai, isi dulu ya 💗",
@@ -37,12 +37,9 @@ const CONFIG = {
 
 Selamat ulang tahun yaa. Semoga di umur kamu yang sekarang, semakin banyak hal baik yang datang ke kamu. Semoga apa yang kamu semogakan satu-satu bisa tercapai, urusan kamu dimudahkan, dan kamu selalu dikelilingi orang-orang yang sayang sama kamu.
 
-
 Aku juga mau bilang makasih karena selama ini kamu udah hadir di hidup aku. Makasih udah selalu berusaha ngerti aku, perhatian sama aku, dan nemenin aku di banyak hal. Mungkin aku nggak selalu bisa nunjukin semuanya dengan cara yang sempurna, tapi aku bener-bener bersyukur bisa kenal dan punya kamu.
 
-
 Di hari ulang tahun kamu ini, aku cuma berharap kamu bisa selalu bahagia, bukan cuma hari ini, tapi juga di hari-hari berikutnya. Kalau nanti ada hari yang berat, semoga kamu selalu punya alasan buat bertahan dan tetap tersenyum.
-
 
 Semoga kita juga bisa terus punya banyak cerita, banyak momen kecil yang nantinya bisa kita inget bareng-bareng. Aku seneng bisa jadi salah satu orang yang bisa nemenin kamu sampai sejauh ini.
 
@@ -84,7 +81,7 @@ I love you, today and always 💕`,
   bungaTransisi: [],
 
   // ---------- 9. HALAMAN FOTO ----------
-  foto: ["foto/1.jpg", "foto/2.jpg", "foto/3.jpg", "foto/4.jpg", "foto/5.jpg", "foto/6.jpg"],
+  foto: ["foto/1.jpg", "foto/2.jpg","foto/3.jpg", "foto/4.jpg", "foto/5.jpg", "foto/6.jpg","foto/7.jpg", "foto/8.jpg", "foto/9.jpg", "foto/10.jpg", "foto/11.jpg", "foto/12.jpg","foto/13.jpg", "foto/14.jpg", "foto/15.jpg", "foto/16.jpg", "foto/17.jpg", "foto/18.jpg","foto/19.jpg", "foto/20.jpg", "foto/21.jpg"],
   video: "foto/video.mp4",
   videoPotret: "foto/video-potret.mp4",
   video2: "foto/video2.mp4",               // landscape ke-2 (BARU)
@@ -93,6 +90,9 @@ I love you, today and always 💕`,
   // ---------- 9B. VIDEO PEMBUKA (potret, paling depan sebelum formulir) ----------
   videoAwal: "foto/video-awal.mp4",
   judulVideoAwal: "Tonton ini dulu ya 🎬",
+
+  // ---------- 9C. KATA-KATA YANG MENGORBIT DI UNIVERSE (ganti sesukamu) ----------
+  kataUniverse: ["HAPPY BIRTHDAY", "I LOVE YOU", "MY LOVE", "FOREVER", "SELI", "SAYANG", "ALWAYS YOU", "MY EVERYTHING", "KAMU SPESIAL", "LOVE YOU 3000"],
 
   // ---------- 10. LAYAR CERITA SETELAH PASSWORD ----------
   cerita: [
@@ -621,16 +621,18 @@ async function pembukaan() {
   const r0 = Math.atan2(y1 - y0, x1 - x0);
   const taruh = (px, py, r) => { pn.style.transform = `translate(${px}px,${py}px) rotate(${r}rad)`; bu.style.transform = `rotate(${r}rad)`; };
   pn.style.opacity = 1; taruh(x0, y0, r0);
-  $('#stCap').textContent = 'tarik busurnya, lalu lepas 💗';
+  $('#stCap').textContent = 'tarik busurnya lalu lepas, atau ketuk saja 💗';
   st.style.touchAction = 'none';
   let miss = 0, tarik = null, bebas = true;
+  const cegah = e => e.preventDefault(); st.addEventListener('touchmove', cegah, { passive: false });
   await new Promise(done => {
     // (vx,vy) = arah tarikan; panah melesat ke arah berlawanan, seperti menarik busur
     const luncur = (vx, vy) => {
       bebas = false;
       const n = Math.hypot(vx, vy), ux = -vx / n, uy = -vy / n, px = x0 + vx, py = y0 + vy;
-      const dx = x1 - px, dy = y1 - py, t = dx * ux + dy * uy, perp = Math.abs(dx * uy - dy * ux);
-      const kena = t > 0 && perp < 45 + miss * 30;   // makin sering meleset, makin mudah kena
+      const dx = x1 - px, dy = y1 - py;
+      const cek = (sx, sy) => dx * sx + dy * sy > 0 && Math.abs(dx * sy - dy * sx) < 55 + miss * 35;   // makin sering meleset, makin mudah kena
+      const kena = cek(ux, uy) || cek(-ux, -uy);   // ditarik menjauh ATAU digeser ke arah hati, dua-duanya kena
       pn.style.transition = 'transform .6s cubic-bezier(.4,0,.9,1),opacity .6s';
       if (kena) { const r = Math.atan2(dy, dx); taruh(x1 - L * Math.cos(r), y1 - L * Math.sin(r), r); setTimeout(done, 650); }
       else {
@@ -648,14 +650,15 @@ async function pembukaan() {
     };
     st.onpointerup = st.onpointercancel = () => {
       if (!tarik) return; const v = tarik.v; tarik = null;
-      if (v && Math.hypot(v[0], v[1]) > 25) luncur(v[0], v[1]); else taruh(x0, y0, r0);
+      if (v && Math.hypot(v[0], v[1]) > 25) luncur(v[0], v[1]);
+      else { const n = Math.hypot(x1 - x0, y1 - y0); luncur(-(x1 - x0) / n * 50, -(y1 - y0) / n * 50); }   // cukup diketuk = panah lurus ke hati
     };
     setTimeout(() => {   // kalau 30 detik diam saja, panah dilepas otomatis
       if (!bebas || tarik) return; const n = Math.hypot(x1 - x0, y1 - y0); luncur(-(x1 - x0) / n * 50, -(y1 - y0) / n * 50);
-    }, 30000);
+    }, 12000);
   });
   st.onpointerdown = st.onpointermove = st.onpointerup = st.onpointercancel = null;
-  st.style.touchAction = ''; bu.style.transform = '';
+  st.removeEventListener('touchmove', cegah); st.style.touchAction = ''; bu.style.transform = '';
   // hati meledak
   hati.style.visibility = 'hidden';
   for (let i = 0; i < 28; i++) {
@@ -688,54 +691,104 @@ async function pembukaan() {
 }
 
 // ---------- UNIVERSE HATI (layar paling akhir) ----------
-const UN = { jalan: false, raf: 0, t: 0, pts: null, item: [], hit: [] };
+const UN = { tilt: .42, jalan: false, raf: 0, last: 0, t: 0, putar: 0, pts: null, item: null, hit: [], w: 0, h: 0, R: 0, cx: 0, cy: 0 };
+// warna partikel: dari inti (putih-pink) ke tepi (magenta gelap); tiap warna punya 4 tingkat terang
+const UN_WARNA = [[255, 236, 246], [255, 175, 218], [255, 100, 190], [225, 55, 165], [165, 30, 130]]
+  .map(c => [.35, .6, .8, 1].map(a => `rgba(${c[0]},${c[1]},${c[2]},${a})`));
 function hentiUni() { cancelAnimationFrame(UN.raf); UN.jalan = false; }
-$('#btnUni').onclick = () => { $('#uGate').hidden = true; mulaiUni(); };
-function mulaiUni() {
-  if (UN.jalan) return; UN.jalan = true;
-  const c = $('#uCanvas'), g = c.getContext('2d'), d = Math.min(devicePixelRatio || 1, 2);
-  const w = innerWidth, h = innerHeight, cx = w / 2, cy = h / 2, R = Math.min(w * .5, h * .6), TILT = .5;
-  c.width = w * d; c.height = h * d; g.setTransform(d, 0, 0, d, 0, 0);
-  if (!UN.pts) {
-    UN.pts = Array.from({ length: 1100 }, (_, i) => {
-      const u = Math.random(), r = Math.pow(u, .8) * R;
-      return { r, a: (i % 3) * 2.094 + r / R * 4.2 + (Math.random() - .5) * .6, s: .8 + Math.random() * 1.6, al: .3 + Math.random() * .7, sp: .006 / (.3 + r / R) };
-    });
-    const kata = ['HAPPY BIRTHDAY', 'I LOVE YOU', 'MY LOVE', 'FOREVER', CONFIG.nama.split(' ')[0], 'SAYANG', 'HAPPY BIRTHDAY', 'ALWAYS YOU', 'MY EVERYTHING', 'KAMU SPESIAL'];
-    kata.forEach((k, i) => UN.item.push({ k, r: R * (.45 + (i % 4) * .15), a: i * .63, sp: .0035 + (i % 3) * .001 }));
-    CONFIG.foto.forEach((src, i) => { const im = new Image(); im.src = src; UN.item.push({ im, src, r: R * (.35 + (i % 4) * .17), a: i * 1.05 + .3, sp: .003 + (i % 3) * .001 }); });
+function bangunUni() {
+  const n = UN.w < 600 ? 4500 : 9000, LENGAN = 3;
+  UN.pts = Array.from({ length: n }, () => {
+    const rn = .05 + Math.pow(Math.random(), 1.5) * .95;                       // lebih padat di tengah
+    const sebar = (.1 + rn * .3) * (Math.random() + Math.random() - 1);        // makin ke tepi makin menyebar
+    return { rn, a: ((Math.random() * LENGAN) | 0) * 6.283 / LENGAN + rn * 6.5 + sebar, s: .9 + Math.random() * 1.5,
+      b: Math.min(4, rn * 5 | 0), q: .3 + Math.random() * .7, sp: .0042 / (.25 + rn) };   // bagian dalam berputar lebih cepat
+  });
+  // kata & foto disebar merata (sudut emas) supaya tidak menumpuk
+  const kata = CONFIG.kataUniverse || [], foto = CONFIG.foto || [], semua = [];
+  for (let i = 0; i < Math.max(kata.length, foto.length); i++) {
+    if (foto[i]) { const im = new Image(); im.src = foto[i]; semua.push({ im, src: foto[i] }); }
+    if (kata[i]) semua.push({ k: kata[i] });
   }
-  (function frame() {
-    if (!UN.jalan) return;
-    UN.t++; UN.hit = [];
-    g.fillStyle = '#14040c'; g.fillRect(0, 0, w, h);
-    const gl = g.createRadialGradient(cx, cy, 0, cx, cy, R * .5); gl.addColorStop(0, 'rgba(255,120,190,.55)'); gl.addColorStop(1, 'rgba(255,60,150,0)');
-    g.fillStyle = gl; g.fillRect(0, 0, w, h);
-    for (const p of UN.pts) {
-      const a = p.a + UN.t * p.sp, dp = (Math.sin(a) + 1) / 2, z = p.s * (.6 + dp * .8);
-      g.fillStyle = `rgba(255,${120 + dp * 80 | 0},${190 + dp * 40 | 0},${p.al * (.45 + .55 * dp)})`;
-      g.fillRect(cx + Math.cos(a) * p.r, cy + Math.sin(a) * p.r * TILT, z, z);
-    }
-    const L = UN.item.map(o => { const a = o.a + UN.t * o.sp; return { o, x: cx + Math.cos(a) * o.r, y: cy + Math.sin(a) * o.r * TILT + Math.sin(UN.t * .02 + o.r) * 6, dp: (Math.sin(a) + 1) / 2 }; }).sort((p, q) => p.dp - q.dp);
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    for (const { o, x, y, dp } of L) {
-      const sc = .7 + dp * .6;
-      if (o.k) { g.font = `bold ${13 * sc}px 'Playfair Display',serif`; g.shadowColor = '#ff4fa0'; g.shadowBlur = 10; g.fillStyle = `rgba(255,225,238,${.55 + dp * .45})`; g.fillText(o.k, x, y); g.shadowBlur = 0; }
-      else if (o.im.complete && o.im.naturalWidth) {
-        const S = 50 * sc; g.save(); g.globalAlpha = .6 + dp * .4; g.fillStyle = '#fff'; g.beginPath(); (g.roundRect || g.rect).call(g, x - S / 2 - 3, y - S / 2 - 3, S + 6, S + 6, 8); g.fill(); g.clip();
-        const m = Math.min(o.im.naturalWidth, o.im.naturalHeight); g.drawImage(o.im, (o.im.naturalWidth - m) / 2, (o.im.naturalHeight - m) / 2, m, m, x - S / 2, y - S / 2, S, S); g.restore();
-        UN.hit.push({ x, y, S, src: o.src });
-      }
-    }
-    UN.raf = requestAnimationFrame(frame);
-  })();
+  UN.item = semua.map((o, j) => Object.assign(o, { a: j * 2.399, rn: .3 + ((j * .618) % 1) * .5, sp: .0013 }));
 }
-$('#uCanvas').onpointerdown = e => {
+function ukurUni() {
+  const c = $('#uCanvas'), d = Math.min(devicePixelRatio || 1, 2);
+  UN.w = innerWidth; UN.h = innerHeight; c.width = UN.w * d; c.height = UN.h * d;
+  c.getContext('2d').setTransform(d, 0, 0, d, 0, 0);
+  UN.tilt = UN.w < UN.h ? .72 : .42;   // layar HP (tegak) → galaksi lebih "berdiri" supaya mengisi layar
+  UN.cx = UN.w / 2; UN.cy = UN.h / 2; UN.R = Math.min(UN.w * .5, UN.h * .62);
+  if (!UN.pts) bangunUni();
+}
+function frameUni(now) {
+  if (!UN.jalan) return;
+  UN.t += Math.min(3, (now - UN.last) / 16.7 || 1); UN.last = now;
+  const { w, h, cx, cy, R } = UN, g = $('#uCanvas').getContext('2d'), fade = Math.min(1, UN.t / 120);
+  g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.fillStyle = '#12030b'; g.fillRect(0, 0, w, h);
+  // kabut cahaya
+  g.save(); g.translate(cx, cy); g.scale(1, UN.tilt);
+  const gl = g.createRadialGradient(0, 0, 0, 0, 0, R * .85);
+  gl.addColorStop(0, 'rgba(255,90,170,.65)'); gl.addColorStop(.4, 'rgba(200,40,130,.3)'); gl.addColorStop(1, 'rgba(120,10,80,0)');
+  g.globalAlpha = fade; g.fillStyle = gl; g.fillRect(-R, -R, R * 2, R * 2); g.restore();
+  // partikel galaksi
+  g.globalCompositeOperation = 'lighter'; g.globalAlpha = fade;
+  for (const p of UN.pts) {
+    const a = p.a + UN.t * p.sp + UN.putar, sn = Math.sin(a), dp = (sn + 1) / 2, r = p.rn * R, z = p.s * (.55 + dp * .7);
+    g.fillStyle = UN_WARNA[p.b][Math.min(3, (dp * .6 + p.q * .4) * 4 | 0)];
+    g.fillRect(cx + Math.cos(a) * r, cy + sn * r * UN.tilt, z, z);
+  }
+  // lubang hitam + cincin terang di pusat
+  g.globalCompositeOperation = 'source-over'; g.globalAlpha = fade;
+  g.save(); g.translate(cx, cy); g.scale(1, UN.tilt);
+  const cg = g.createRadialGradient(0, 0, 0, 0, 0, R * .17);
+  cg.addColorStop(0, 'rgba(12,0,7,1)'); cg.addColorStop(.52, 'rgba(12,0,7,1)'); cg.addColorStop(.72, 'rgba(255,205,232,.95)'); cg.addColorStop(1, 'rgba(255,70,170,0)');
+  g.fillStyle = cg; g.beginPath(); g.arc(0, 0, R * .17, 0, 6.283); g.fill(); g.restore();
+  // kata & foto yang mengorbit
+  const L = UN.item.map(o => {
+    const a = o.a + UN.t * o.sp + UN.putar, r = o.rn * R, sn = Math.sin(a);
+    return { o, x: cx + Math.cos(a) * r, y: cy + sn * r * UN.tilt - 8 + Math.sin(UN.t * .03 + o.a * 3) * 5, dp: (sn + 1) / 2 };
+  }).sort((p, q) => p.dp - q.dp);
+  const B = Math.max(38, Math.min(74, R * .15)); UN.hit = [];
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (const { o, x, y, dp } of L) {
+    const sc = .7 + dp * .45; g.globalAlpha = fade * (.55 + dp * .45);
+    if (o.k) {
+      g.font = `bold ${Math.max(10, R * .04) * sc}px 'Playfair Display',serif`; g.shadowColor = '#ff4fa0'; g.shadowBlur = 12;
+      g.fillStyle = '#ffe3f0'; g.fillText(o.k, x, y); g.shadowBlur = 0;
+    } else if (o.im.complete && o.im.naturalWidth) {
+      const S = B * sc, m = Math.min(o.im.naturalWidth, o.im.naturalHeight);
+      g.save(); g.shadowColor = '#ff4fa0'; g.shadowBlur = 16; g.fillStyle = '#fff'; g.beginPath();
+      (g.roundRect || g.rect).call(g, x - S / 2 - 3, y - S / 2 - 3, S + 6, S + 6, 9); g.fill(); g.shadowBlur = 0; g.clip();
+      g.drawImage(o.im, (o.im.naturalWidth - m) / 2, (o.im.naturalHeight - m) / 2, m, m, x - S / 2, y - S / 2, S, S); g.restore();
+      UN.hit.push({ x, y, S, src: o.src });
+    }
+  }
+  g.globalAlpha = 1;
+  UN.raf = requestAnimationFrame(frameUni);
+}
+function mulaiUni() {
+  if (UN.jalan) return; UN.jalan = true; UN.t = 0; UN.last = performance.now();
+  ukurUni(); UN.raf = requestAnimationFrame(frameUni);
+}
+$('#btnUni').onclick = () => { $('#uGate').hidden = true; mulaiUni(); };
+addEventListener('resize', () => { if (UN.jalan) ukurUni(); });
+// geser untuk memutar galaksi, ketuk foto untuk memperbesar
+let seretUni = null;
+const uc = $('#uCanvas');
+uc.onpointerdown = e => { seretUni = { x: e.clientX, y: e.clientY, a: UN.putar, geser: false }; uc.setPointerCapture(e.pointerId); };
+uc.onpointermove = e => {
+  if (!seretUni) return; const dx = e.clientX - seretUni.x;
+  if (Math.abs(dx) > 6) seretUni.geser = true;
+  if (seretUni.geser) UN.putar = seretUni.a + dx * .006;
+};
+uc.onpointerup = e => {
+  const s = seretUni; seretUni = null; if (!s || s.geser) return;
   for (let i = UN.hit.length - 1; i >= 0; i--) {
     const q = UN.hit[i];
     if (Math.abs(e.clientX - q.x) < q.S / 2 + 4 && Math.abs(e.clientY - q.y) < q.S / 2 + 4) { $('#lb img').src = q.src; $('#lb').classList.add('on'); return; }
   }
 };
+uc.onpointercancel = () => { seretUni = null; };
 
 // ---------- mulai ----------
 if (sudah) go('gift'); else pembukaan();
